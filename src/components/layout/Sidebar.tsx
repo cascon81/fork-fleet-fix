@@ -23,13 +23,13 @@ export function Sidebar() {
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 gradient-sidebar border-r border-sidebar-border">
       <div className="flex h-full flex-col">
         {/* Logo */}
-        <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-primary">
-            <Truck className="h-6 w-6 text-primary-foreground" />
+        <div className="flex h-20 items-center gap-3 border-b border-sidebar-border px-6">
+          <div className="flex h-11 w-11 items-center justify-center rounded-lg gradient-accent">
+            <Truck className="h-6 w-6 text-sidebar-background" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-sidebar-foreground">ForkliftPro</h1>
-            <p className="text-xs text-sidebar-foreground/60">Gestão de Empilhadeiras</p>
+            <h1 className="text-lg font-bold text-sidebar-foreground tracking-tight">Nevalf</h1>
+            <p className="text-xs text-sidebar-foreground/60 font-medium">Empilhadeiras</p>
           </div>
         </div>
 
