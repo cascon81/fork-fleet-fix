@@ -13,16 +13,16 @@ interface StatCardProps {
 }
 
 const variantStyles = {
-  default: 'bg-card',
-  primary: 'bg-primary/10 border-primary/20',
-  success: 'bg-success/10 border-success/20',
-  warning: 'bg-warning/10 border-warning/20',
-  destructive: 'bg-destructive/10 border-destructive/20',
+  default: 'bg-card border-border',
+  primary: 'bg-primary/5 border-primary/20',
+  success: 'bg-success/5 border-success/20',
+  warning: 'bg-warning/5 border-warning/20',
+  destructive: 'bg-destructive/5 border-destructive/20',
 };
 
 const iconStyles = {
   default: 'bg-secondary text-muted-foreground',
-  primary: 'bg-primary text-primary-foreground',
+  primary: 'gradient-primary text-primary-foreground',
   success: 'bg-success text-success-foreground',
   warning: 'bg-warning text-warning-foreground',
   destructive: 'bg-destructive text-destructive-foreground',
@@ -35,8 +35,8 @@ export function StatCard({ title, value, icon: Icon, trend, variant = 'default' 
       variantStyles[variant]
     )}>
       <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-muted-foreground truncate">{title}</p>
           <p className="mt-2 text-3xl font-bold text-foreground">{value}</p>
           {trend && (
             <p className={cn(
@@ -48,7 +48,7 @@ export function StatCard({ title, value, icon: Icon, trend, variant = 'default' 
           )}
         </div>
         <div className={cn(
-          "flex h-12 w-12 items-center justify-center rounded-lg",
+          "flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl",
           iconStyles[variant]
         )}>
           <Icon className="h-6 w-6" />
