@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, Building2, Phone, Mail, MapPin } from 'lucide-react';
 import { useState } from 'react';
+import { AddClientModal } from '@/components/modals/AddClientModal';
 
 const clientes = [
   {
@@ -49,6 +50,7 @@ const clientes = [
 
 const Clientes = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const filteredClientes = clientes.filter(cliente =>
     cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -69,7 +71,7 @@ const Clientes = () => {
               className="pl-9"
             />
           </div>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => setIsAddModalOpen(true)}>
             <Plus className="h-4 w-4" />
             Novo Cliente
           </Button>
@@ -149,6 +151,8 @@ const Clientes = () => {
           ))}
         </div>
       </div>
+
+      <AddClientModal open={isAddModalOpen} onOpenChange={setIsAddModalOpen} />
     </MainLayout>
   );
 };

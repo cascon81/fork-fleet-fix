@@ -3,7 +3,8 @@ import { ForkliftTable } from '@/components/fleet/ForkliftTable';
 import { forklifts } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Filter } from 'lucide-react';
+import { Plus, Search, Filter, Download } from 'lucide-react';
+import { AddForkliftModal } from '@/components/modals/AddForkliftModal';
 import {
   Select,
   SelectContent,
@@ -16,6 +17,7 @@ import { useState } from 'react';
 const Frota = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const filteredForklifts = forklifts.filter(forklift => {
     const matchesSearch = 
@@ -56,10 +58,16 @@ const Frota = () => {
               </SelectContent>
             </Select>
           </div>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            Nova Empilhadeira
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" className="gap-2">
+              <Download className="h-4 w-4" />
+              Exportar
+            </Button>
+            <Button className="gap-2" onClick={() => setIsAddModalOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Nova Empilhadeira
+            </Button>
+          </div>
         </div>
 
         {/* Stats Summary */}
@@ -85,6 +93,8 @@ const Frota = () => {
         {/* Table */}
         <ForkliftTable forklifts={filteredForklifts} />
       </div>
+
+      <AddForkliftModal open={isAddModalOpen} onOpenChange={setIsAddModalOpen} />
     </MainLayout>
   );
 };

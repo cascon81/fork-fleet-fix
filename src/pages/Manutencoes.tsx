@@ -1,6 +1,8 @@
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import { AddMaintenanceModal } from '@/components/modals/AddMaintenanceModal';
 import {
   Table,
   TableBody,
@@ -32,6 +34,7 @@ const tipoConfig = {
 };
 
 const Manutencoes = () => {
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const getForklift = (id: string) => forklifts.find(f => f.id === id);
 
   const pendingCount = maintenances.filter(m => m.status !== 'concluida').length;
@@ -49,7 +52,7 @@ const Manutencoes = () => {
               Acompanhe as manutenções preventivas e corretivas
             </p>
           </div>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => setIsAddModalOpen(true)}>
             <Plus className="h-4 w-4" />
             Agendar Manutenção
           </Button>
@@ -166,6 +169,8 @@ const Manutencoes = () => {
           </Table>
         </div>
       </div>
+
+      <AddMaintenanceModal open={isAddModalOpen} onOpenChange={setIsAddModalOpen} />
     </MainLayout>
   );
 };
