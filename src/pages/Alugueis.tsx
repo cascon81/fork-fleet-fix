@@ -1,6 +1,8 @@
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import { AddRentalModal } from '@/components/modals/AddRentalModal';
 import {
   Table,
   TableBody,
@@ -27,6 +29,7 @@ const statusConfig = {
 };
 
 const Alugueis = () => {
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const getForklift = (id: string) => forklifts.find(f => f.id === id);
 
   const activeRentals = rentals.filter(r => r.status === 'ativo' || r.status === 'atrasado');
@@ -47,7 +50,7 @@ const Alugueis = () => {
               Gerencie todos os contratos de aluguel
             </p>
           </div>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => setIsAddModalOpen(true)}>
             <Plus className="h-4 w-4" />
             Novo Aluguel
           </Button>
@@ -141,6 +144,8 @@ const Alugueis = () => {
           </Table>
         </div>
       </div>
+
+      <AddRentalModal open={isAddModalOpen} onOpenChange={setIsAddModalOpen} />
     </MainLayout>
   );
 };

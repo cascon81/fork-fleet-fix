@@ -5,6 +5,7 @@ import {
   FileText, 
   Wrench, 
   Users,
+  BarChart3,
   Settings,
   LogOut
 } from 'lucide-react';
@@ -16,6 +17,7 @@ const menuItems = [
   { icon: FileText, label: 'Aluguéis', path: '/alugueis' },
   { icon: Wrench, label: 'Manutenções', path: '/manutencoes' },
   { icon: Users, label: 'Clientes', path: '/clientes' },
+  { icon: BarChart3, label: 'Relatórios', path: '/relatorios' },
 ];
 
 export function Sidebar() {
@@ -23,13 +25,15 @@ export function Sidebar() {
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 gradient-sidebar border-r border-sidebar-border">
       <div className="flex h-full flex-col">
         {/* Logo */}
-        <div className="flex h-20 items-center gap-3 border-b border-sidebar-border px-6">
-          <div className="flex h-11 w-11 items-center justify-center rounded-lg gradient-accent">
-            <Truck className="h-6 w-6 text-sidebar-background" />
+        <div className="flex h-24 items-center gap-3 border-b border-sidebar-border px-6">
+          <div className="flex h-14 w-14 items-center justify-center rounded-lg gradient-accent">
+            <Truck className="h-8 w-8 text-sidebar-background" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-sidebar-foreground tracking-tight">Nevalf</h1>
-            <p className="text-xs text-sidebar-foreground/60 font-medium">Empilhadeiras</p>
+            <h1 className="text-base font-bold text-sidebar-foreground tracking-tight leading-tight">
+              Nevalf Empilhadeiras
+            </h1>
+            <p className="text-xs text-sidebar-foreground/60 font-medium mt-0.5">Gestão de Frotas</p>
           </div>
         </div>
 
