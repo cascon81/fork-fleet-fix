@@ -1,5 +1,5 @@
 import { NavLink } from '@/components/NavLink';
-import { LayoutDashboard, Truck, FileText, Wrench, Users, BarChart3, Settings, LogOut, File } from 'lucide-react';
+import { LayoutDashboard, Truck, FileText, Wrench, Users, BarChart3, Settings, LogOut, Clipboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 const menuItems = [{
   icon: LayoutDashboard,
@@ -32,7 +32,7 @@ export function Sidebar() {
         {/* Logo */}
         <div className="flex h-24 items-center gap-3 border-b border-sidebar-border px-6">
           <div className="flex h-14 w-14 items-center justify-center rounded-lg gradient-accent">
-            <File className="h-8 w-8 text-sidebar-background" />
+            <Clipboard className="text-sidebar-background w-[25px] h-[25px]" />
           </div>
           <div>
             <h1 className="text-base font-bold text-sidebar-foreground tracking-tight leading-tight">
