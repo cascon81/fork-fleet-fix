@@ -7,7 +7,8 @@ import {
   Users,
   BarChart3,
   Settings,
-  LogOut
+  LogOut,
+  Container
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -27,7 +28,7 @@ export function Sidebar() {
         {/* Logo */}
         <div className="flex h-24 items-center gap-3 border-b border-sidebar-border px-6">
           <div className="flex h-14 w-14 items-center justify-center rounded-lg gradient-accent">
-            <Truck className="h-8 w-8 text-sidebar-background" />
+            <Container className="h-8 w-8 text-sidebar-background" />
           </div>
           <div>
             <h1 className="text-base font-bold text-sidebar-foreground tracking-tight leading-tight">
