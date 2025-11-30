@@ -1,4 +1,4 @@
-import { Bell, Search, User } from 'lucide-react';
+import { Bell, Search, User, LogOut } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +15,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useAuth } from '@/hooks/useAuth';
 
 interface HeaderProps {
   title: string;
@@ -27,6 +28,8 @@ const notifications = [
 ];
 
 export function Header({ title }: HeaderProps) {
+  const { user, signOut } = useAuth();
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6">
       <h2 className="text-xl font-semibold text-foreground">{title}</h2>
@@ -83,7 +86,7 @@ export function Header({ title }: HeaderProps) {
             <Button variant="ghost" className="relative h-9 w-9 rounded-full">
               <Avatar className="h-9 w-9">
                 <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-sm">
-                  NE
+                  {user?.email?.substring(0, 2).toUpperCase() || 'NE'}
                 </AvatarFallback>
               </Avatar>
             </Button>
@@ -91,9 +94,9 @@ export function Header({ title }: HeaderProps) {
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">Administrador</p>
+                <p className="text-sm font-medium leading-none">Usuário</p>
                 <p className="text-xs leading-none text-muted-foreground">
-                  admin@nevalf.com.br
+                  {user?.email}
                 </p>
               </div>
             </DropdownMenuLabel>
@@ -102,7 +105,8 @@ export function Header({ title }: HeaderProps) {
               <User className="mr-2 h-4 w-4" />
               <span>Perfil</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive focus:text-destructive">
+            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={signOut}>
+              <LogOut className="mr-2 h-4 w-4" />
               Sair
             </DropdownMenuItem>
           </DropdownMenuContent>

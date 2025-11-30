@@ -10,6 +10,7 @@ import Alugueis from "./pages/Alugueis";
 import Manutencoes from "./pages/Manutencoes";
 import Clientes from "./pages/Clientes";
 import Relatorios from "./pages/Relatorios";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const App = () => {
@@ -22,6 +23,7 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
+            <Route path="/auth" element={<Auth />} />
             <Route path="/" element={<Index />} />
             <Route path="/frota" element={<Frota />} />
             <Route path="/alugueis" element={<Alugueis />} />
