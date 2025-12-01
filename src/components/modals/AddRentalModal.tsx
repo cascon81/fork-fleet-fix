@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -17,8 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { forklifts } from '@/data/mockData';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AddRentalModalProps {
   open: boolean;
@@ -26,6 +27,7 @@ interface AddRentalModalProps {
 }
 
 export function AddRentalModal({ open, onOpenChange }: AddRentalModalProps) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     forkliftId: '',
     cliente: '',
@@ -33,23 +35,81 @@ export function AddRentalModal({ open, onOpenChange }: AddRentalModalProps) {
     dataFim: '',
     valorDiaria: '',
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [availableForklifts, setAvailableForklifts] = useState<any[]>([]);
 
-  const availableForklifts = forklifts.filter(f => f.status === 'disponivel');
+  useEffect(() => {
+    if (open && user) {
+      fetchAvailableForklifts();
+    }
+  }, [open, user]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const fetchAvailableForklifts = async () => {
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from('forklifts')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('status', 'disponivel');
+
+    if (!error && data) {
+      setAvailableForklifts(data);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const forklift = forklifts.find(f => f.id === formData.forkliftId);
-    toast.success('Aluguel cadastrado com sucesso!', {
-      description: `Cliente: ${formData.cliente} - ${forklift?.marca} ${forklift?.modelo}`,
-    });
-    onOpenChange(false);
-    setFormData({
-      forkliftId: '',
-      cliente: '',
-      dataInicio: '',
-      dataFim: '',
-      valorDiaria: '',
-    });
+    
+    if (!user) {
+      toast.error('Você precisa estar logado para registrar um aluguel');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const { error: rentalError } = await supabase.from('rentals').insert({
+        user_id: user.id,
+        forklift_id: formData.forkliftId,
+        cliente: formData.cliente,
+        data_inicio: formData.dataInicio,
+        data_fim: formData.dataFim,
+        valor_diaria: parseFloat(formData.valorDiaria),
+        status: 'ativo',
+      });
+
+      if (rentalError) throw rentalError;
+
+      // Update forklift status to 'alugada'
+      const { error: updateError } = await supabase
+        .from('forklifts')
+        .update({ status: 'alugada' })
+        .eq('id', formData.forkliftId);
+
+      if (updateError) throw updateError;
+
+      const forklift = availableForklifts.find((f) => f.id === formData.forkliftId);
+      toast.success('Aluguel registrado com sucesso!', {
+        description: `${forklift?.marca} ${forklift?.modelo} - ${formData.cliente}`,
+      });
+      
+      onOpenChange(false);
+      setFormData({
+        forkliftId: '',
+        cliente: '',
+        dataInicio: '',
+        dataFim: '',
+        valorDiaria: '',
+      });
+    } catch (error) {
+      console.error('Erro ao registrar aluguel:', error);
+      toast.error('Erro ao registrar aluguel', {
+        description: 'Tente novamente mais tarde',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -89,7 +149,7 @@ export function AddRentalModal({ open, onOpenChange }: AddRentalModalProps) {
                       Nenhuma empilhadeira disponível
                     </SelectItem>
                   ) : (
-                    availableForklifts.map((forklift) => (
+                    availableForklifts.map((forklift: any) => (
                       <SelectItem key={forklift.id} value={forklift.id}>
                         {forklift.placa} - {forklift.marca} {forklift.modelo} ({forklift.capacidade})
                       </SelectItem>
@@ -138,11 +198,11 @@ export function AddRentalModal({ open, onOpenChange }: AddRentalModalProps) {
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={availableForklifts.length === 0}>
-              Registrar Aluguel
+            <Button type="submit" disabled={availableForklifts.length === 0 || isLoading}>
+              {isLoading ? 'Registrando...' : 'Registrar Aluguel'}
             </Button>
           </DialogFooter>
         </form>

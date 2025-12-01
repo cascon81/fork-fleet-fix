@@ -14,7 +14,193 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      clients: {
+        Row: {
+          alugueis_ativos: number
+          cnpj: string
+          contato: string
+          created_at: string
+          email: string
+          endereco: string
+          id: string
+          nome: string
+          telefone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alugueis_ativos?: number
+          cnpj: string
+          contato: string
+          created_at?: string
+          email: string
+          endereco: string
+          id?: string
+          nome: string
+          telefone: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alugueis_ativos?: number
+          cnpj?: string
+          contato?: string
+          created_at?: string
+          email?: string
+          endereco?: string
+          id?: string
+          nome?: string
+          telefone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      forklifts: {
+        Row: {
+          ano_fabricacao: number
+          capacidade: string
+          created_at: string
+          horas_uso: number
+          id: string
+          marca: string
+          modelo: string
+          placa: string
+          proxima_manutencao: string | null
+          status: Database["public"]["Enums"]["forklift_status"]
+          ultima_manutencao: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ano_fabricacao: number
+          capacidade: string
+          created_at?: string
+          horas_uso?: number
+          id?: string
+          marca: string
+          modelo: string
+          placa: string
+          proxima_manutencao?: string | null
+          status?: Database["public"]["Enums"]["forklift_status"]
+          ultima_manutencao?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ano_fabricacao?: number
+          capacidade?: string
+          created_at?: string
+          horas_uso?: number
+          id?: string
+          marca?: string
+          modelo?: string
+          placa?: string
+          proxima_manutencao?: string | null
+          status?: Database["public"]["Enums"]["forklift_status"]
+          ultima_manutencao?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      maintenances: {
+        Row: {
+          created_at: string
+          custo: number | null
+          data_agendada: string
+          data_conclusao: string | null
+          descricao: string
+          forklift_id: string
+          id: string
+          status: Database["public"]["Enums"]["maintenance_status"]
+          tipo: Database["public"]["Enums"]["maintenance_tipo"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          custo?: number | null
+          data_agendada: string
+          data_conclusao?: string | null
+          descricao: string
+          forklift_id: string
+          id?: string
+          status?: Database["public"]["Enums"]["maintenance_status"]
+          tipo: Database["public"]["Enums"]["maintenance_tipo"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          custo?: number | null
+          data_agendada?: string
+          data_conclusao?: string | null
+          descricao?: string
+          forklift_id?: string
+          id?: string
+          status?: Database["public"]["Enums"]["maintenance_status"]
+          tipo?: Database["public"]["Enums"]["maintenance_tipo"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenances_forklift_id_fkey"
+            columns: ["forklift_id"]
+            isOneToOne: false
+            referencedRelation: "forklifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rentals: {
+        Row: {
+          cliente: string
+          created_at: string
+          data_fim: string
+          data_inicio: string
+          forklift_id: string
+          id: string
+          status: Database["public"]["Enums"]["rental_status"]
+          updated_at: string
+          user_id: string
+          valor_diaria: number
+        }
+        Insert: {
+          cliente: string
+          created_at?: string
+          data_fim: string
+          data_inicio: string
+          forklift_id: string
+          id?: string
+          status?: Database["public"]["Enums"]["rental_status"]
+          updated_at?: string
+          user_id: string
+          valor_diaria: number
+        }
+        Update: {
+          cliente?: string
+          created_at?: string
+          data_fim?: string
+          data_inicio?: string
+          forklift_id?: string
+          id?: string
+          status?: Database["public"]["Enums"]["rental_status"]
+          updated_at?: string
+          user_id?: string
+          valor_diaria?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rentals_forklift_id_fkey"
+            columns: ["forklift_id"]
+            isOneToOne: false
+            referencedRelation: "forklifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +209,10 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      forklift_status: "disponivel" | "alugada" | "manutencao"
+      maintenance_status: "agendada" | "em_andamento" | "concluida"
+      maintenance_tipo: "preventiva" | "corretiva"
+      rental_status: "ativo" | "finalizado" | "atrasado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +339,11 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      forklift_status: ["disponivel", "alugada", "manutencao"],
+      maintenance_status: ["agendada", "em_andamento", "concluida"],
+      maintenance_tipo: ["preventiva", "corretiva"],
+      rental_status: ["ativo", "finalizado", "atrasado"],
+    },
   },
 } as const

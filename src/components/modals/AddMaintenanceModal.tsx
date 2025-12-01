@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -18,8 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { forklifts } from '@/data/mockData';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AddMaintenanceModalProps {
   open: boolean;
@@ -27,6 +28,7 @@ interface AddMaintenanceModalProps {
 }
 
 export function AddMaintenanceModal({ open, onOpenChange }: AddMaintenanceModalProps) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     forkliftId: '',
     tipo: '',
@@ -34,21 +36,72 @@ export function AddMaintenanceModal({ open, onOpenChange }: AddMaintenanceModalP
     dataAgendada: '',
     custo: '',
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [forklifts, setForklifts] = useState<any[]>([]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (open && user) {
+      fetchForklifts();
+    }
+  }, [open, user]);
+
+  const fetchForklifts = async () => {
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from('forklifts')
+      .select('*')
+      .eq('user_id', user.id);
+
+    if (!error && data) {
+      setForklifts(data);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const forklift = forklifts.find(f => f.id === formData.forkliftId);
-    toast.success('Manutenção agendada com sucesso!', {
-      description: `${forklift?.marca} ${forklift?.modelo} - ${formData.tipo}`,
-    });
-    onOpenChange(false);
-    setFormData({
-      forkliftId: '',
-      tipo: '',
-      descricao: '',
-      dataAgendada: '',
-      custo: '',
-    });
+    
+    if (!user) {
+      toast.error('Você precisa estar logado para agendar uma manutenção');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase.from('maintenances').insert({
+        user_id: user.id,
+        forklift_id: formData.forkliftId,
+        tipo: formData.tipo as 'preventiva' | 'corretiva',
+        descricao: formData.descricao,
+        data_agendada: formData.dataAgendada,
+        custo: formData.custo ? parseFloat(formData.custo) : null,
+        status: 'agendada',
+      });
+
+      if (error) throw error;
+
+      const forklift = forklifts.find(f => f.id === formData.forkliftId);
+      toast.success('Manutenção agendada com sucesso!', {
+        description: `${forklift?.marca} ${forklift?.modelo} - ${formData.tipo}`,
+      });
+      
+      onOpenChange(false);
+      setFormData({
+        forkliftId: '',
+        tipo: '',
+        descricao: '',
+        dataAgendada: '',
+        custo: '',
+      });
+    } catch (error) {
+      console.error('Erro ao agendar manutenção:', error);
+      toast.error('Erro ao agendar manutenção', {
+        description: 'Tente novamente mais tarde',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -135,10 +188,12 @@ export function AddMaintenanceModal({ open, onOpenChange }: AddMaintenanceModalP
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
               Cancelar
             </Button>
-            <Button type="submit">Agendar Manutenção</Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? 'Agendando...' : 'Agendar Manutenção'}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

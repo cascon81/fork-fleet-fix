@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AddClientModalProps {
   open: boolean;
@@ -18,6 +20,7 @@ interface AddClientModalProps {
 }
 
 export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     nome: '',
     cnpj: '',
@@ -26,6 +29,7 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
     email: '',
     endereco: '',
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   const formatCNPJ = (value: string) => {
     const numbers = value.replace(/\D/g, '');
@@ -49,20 +53,50 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
     return value;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Cliente cadastrado com sucesso!', {
-      description: `${formData.nome} - ${formData.cnpj}`,
-    });
-    onOpenChange(false);
-    setFormData({
-      nome: '',
-      cnpj: '',
-      contato: '',
-      telefone: '',
-      email: '',
-      endereco: '',
-    });
+    
+    if (!user) {
+      toast.error('Você precisa estar logado para adicionar um cliente');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase.from('clients').insert({
+        user_id: user.id,
+        nome: formData.nome,
+        cnpj: formData.cnpj,
+        contato: formData.contato,
+        telefone: formData.telefone,
+        email: formData.email,
+        endereco: formData.endereco,
+      });
+
+      if (error) throw error;
+
+      toast.success('Cliente cadastrado com sucesso!', {
+        description: `${formData.nome} - ${formData.cnpj}`,
+      });
+      
+      onOpenChange(false);
+      setFormData({
+        nome: '',
+        cnpj: '',
+        contato: '',
+        telefone: '',
+        email: '',
+        endereco: '',
+      });
+    } catch (error) {
+      console.error('Erro ao cadastrar cliente:', error);
+      toast.error('Erro ao cadastrar cliente', {
+        description: 'Tente novamente mais tarde',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -147,10 +181,12 @@ export function AddClientModal({ open, onOpenChange }: AddClientModalProps) {
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
               Cancelar
             </Button>
-            <Button type="submit">Cadastrar Cliente</Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? 'Cadastrando...' : 'Cadastrar Cliente'}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

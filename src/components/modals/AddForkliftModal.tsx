@@ -18,6 +18,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AddForkliftModalProps {
   open: boolean;
@@ -25,6 +27,7 @@ interface AddForkliftModalProps {
 }
 
 export function AddForkliftModal({ open, onOpenChange }: AddForkliftModalProps) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     placa: '',
     marca: '',
@@ -33,21 +36,53 @@ export function AddForkliftModal({ open, onOpenChange }: AddForkliftModalProps) 
     anoFabricacao: '',
     horasUso: '',
   });
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Empilhadeira cadastrada com sucesso!', {
-      description: `${formData.marca} ${formData.modelo} - ${formData.placa}`,
-    });
-    onOpenChange(false);
-    setFormData({
-      placa: '',
-      marca: '',
-      modelo: '',
-      capacidade: '',
-      anoFabricacao: '',
-      horasUso: '',
-    });
+    
+    if (!user) {
+      toast.error('Você precisa estar logado para adicionar uma empilhadeira');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase.from('forklifts').insert({
+        user_id: user.id,
+        placa: formData.placa,
+        marca: formData.marca,
+        modelo: formData.modelo,
+        capacidade: formData.capacidade,
+        ano_fabricacao: parseInt(formData.anoFabricacao),
+        horas_uso: parseInt(formData.horasUso),
+        status: 'disponivel',
+      });
+
+      if (error) throw error;
+
+      toast.success('Empilhadeira cadastrada com sucesso!', {
+        description: `${formData.marca} ${formData.modelo} - ${formData.placa}`,
+      });
+      
+      onOpenChange(false);
+      setFormData({
+        placa: '',
+        marca: '',
+        modelo: '',
+        capacidade: '',
+        anoFabricacao: '',
+        horasUso: '',
+      });
+    } catch (error) {
+      console.error('Erro ao cadastrar empilhadeira:', error);
+      toast.error('Erro ao cadastrar empilhadeira', {
+        description: 'Tente novamente mais tarde',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -154,10 +189,12 @@ export function AddForkliftModal({ open, onOpenChange }: AddForkliftModalProps) 
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
               Cancelar
             </Button>
-            <Button type="submit">Cadastrar Empilhadeira</Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? 'Cadastrando...' : 'Cadastrar Empilhadeira'}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
