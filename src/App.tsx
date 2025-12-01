@@ -11,6 +11,8 @@ import Manutencoes from "./pages/Manutencoes";
 import Clientes from "./pages/Clientes";
 import Relatorios from "./pages/Relatorios";
 import Auth from "./pages/Auth";
+import Perfil from "./pages/Perfil";
+import Configuracoes from "./pages/Configuracoes";
 import NotFound from "./pages/NotFound";
 
 const App = () => {
@@ -30,6 +32,8 @@ const App = () => {
             <Route path="/manutencoes" element={<Manutencoes />} />
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/relatorios" element={<Relatorios />} />
+            <Route path="/perfil" element={<Perfil />} />
+            <Route path="/configuracoes" element={<Configuracoes />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

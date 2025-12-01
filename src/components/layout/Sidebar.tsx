@@ -1,6 +1,7 @@
 import { NavLink } from '@/components/NavLink';
 import { LayoutDashboard, Truck, FileText, Wrench, Users, BarChart3, Settings, LogOut, Container } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 const menuItems = [{
   icon: LayoutDashboard,
   label: 'Dashboard',
@@ -27,6 +28,8 @@ const menuItems = [{
   path: '/relatorios'
 }];
 export function Sidebar() {
+  const { signOut } = useAuth();
+  
   return <aside className="fixed left-0 top-0 z-40 h-screen w-64 gradient-sidebar border-r border-sidebar-border">
       <div className="flex h-full flex-col">
         {/* Logo */}
@@ -56,7 +59,7 @@ export function Sidebar() {
             <Settings className="h-5 w-5" />
             Configurações
           </NavLink>
-          <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-destructive/20 hover:text-destructive transition-all">
+          <button onClick={signOut} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-destructive/20 hover:text-destructive transition-all">
             <LogOut className="h-5 w-5" />
             Sair
           </button>
