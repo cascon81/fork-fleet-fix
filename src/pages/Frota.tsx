@@ -1,9 +1,8 @@
 import { MainLayout } from '@/components/layout/MainLayout';
 import { ForkliftTable } from '@/components/fleet/ForkliftTable';
-import { forklifts } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Filter, Download } from 'lucide-react';
+import { Plus, Search, Filter, Download, Loader2 } from 'lucide-react';
 import { AddForkliftModal } from '@/components/modals/AddForkliftModal';
 import {
   Select,
@@ -12,23 +11,70 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { mapDbForklift, type DbForklift } from '@/types/forklift';
+import { toast } from 'sonner';
 
 const Frota = () => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [forklifts, setForklifts] = useState<DbForklift[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredForklifts = forklifts.filter(forklift => {
-    const matchesSearch = 
-      forklift.placa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      forklift.marca.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      forklift.modelo.toLowerCase().includes(searchTerm.toLowerCase());
+  const fetchForklifts = async () => {
+    if (!user) return;
     
-    const matchesStatus = statusFilter === 'todos' || forklift.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('forklifts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setForklifts(data || []);
+    } catch (error: any) {
+      toast.error('Erro ao carregar empilhadeiras: ' + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchForklifts();
+  }, [user]);
+
+  const filteredForklifts = useMemo(() => {
+    return forklifts
+      .map(mapDbForklift)
+      .filter(forklift => {
+        const matchesSearch = 
+          forklift.placa.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          forklift.marca.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          forklift.modelo.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        const matchesStatus = statusFilter === 'todos' || forklift.status === statusFilter;
+        
+        return matchesSearch && matchesStatus;
+      });
+  }, [forklifts, searchTerm, statusFilter]);
+
+  const stats = useMemo(() => ({
+    total: forklifts.length,
+    disponivel: forklifts.filter(f => f.status === 'disponivel').length,
+    manutencao: forklifts.filter(f => f.status === 'manutencao').length,
+  }), [forklifts]);
+
+  const handleModalClose = (open: boolean) => {
+    setIsAddModalOpen(open);
+    if (!open) {
+      fetchForklifts();
+    }
+  };
 
   return (
     <MainLayout title="Gestão da Frota">
@@ -74,27 +120,37 @@ const Frota = () => {
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-lg border bg-card p-4 shadow-card">
             <p className="text-sm text-muted-foreground">Total na Frota</p>
-            <p className="text-2xl font-bold text-foreground">{forklifts.length}</p>
+            <p className="text-2xl font-bold text-foreground">{stats.total}</p>
           </div>
           <div className="rounded-lg border bg-success/10 border-success/20 p-4">
             <p className="text-sm text-muted-foreground">Disponíveis</p>
-            <p className="text-2xl font-bold text-success">
-              {forklifts.filter(f => f.status === 'disponivel').length}
-            </p>
+            <p className="text-2xl font-bold text-success">{stats.disponivel}</p>
           </div>
           <div className="rounded-lg border bg-warning/10 border-warning/20 p-4">
             <p className="text-sm text-muted-foreground">Em Manutenção</p>
-            <p className="text-2xl font-bold text-warning">
-              {forklifts.filter(f => f.status === 'manutencao').length}
-            </p>
+            <p className="text-2xl font-bold text-warning">{stats.manutencao}</p>
           </div>
         </div>
 
         {/* Table */}
-        <ForkliftTable forklifts={filteredForklifts} />
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : filteredForklifts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <p className="text-muted-foreground">
+              {searchTerm || statusFilter !== 'todos' 
+                ? 'Nenhuma empilhadeira encontrada com os filtros aplicados.'
+                : 'Nenhuma empilhadeira cadastrada. Adicione sua primeira empilhadeira!'}
+            </p>
+          </div>
+        ) : (
+          <ForkliftTable forklifts={filteredForklifts} />
+        )}
       </div>
 
-      <AddForkliftModal open={isAddModalOpen} onOpenChange={setIsAddModalOpen} />
+      <AddForkliftModal open={isAddModalOpen} onOpenChange={handleModalClose} />
     </MainLayout>
   );
 };

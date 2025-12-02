@@ -62,7 +62,10 @@ export function ForkliftTable({ forklifts }: ForkliftTableProps) {
                 <TableCell>{forklift.anoFabricacao}</TableCell>
                 <TableCell>{forklift.horasUso.toLocaleString('pt-BR')}h</TableCell>
                 <TableCell>
-                  {format(new Date(forklift.proximaManutencao), "dd/MM/yyyy", { locale: ptBR })}
+                  {forklift.proximaManutencao 
+                    ? format(new Date(forklift.proximaManutencao), "dd/MM/yyyy", { locale: ptBR })
+                    : '-'
+                  }
                 </TableCell>
                 <TableCell>
                   <Badge variant={config.variant}>{config.label}</Badge>
