@@ -4,7 +4,7 @@ import { ForkliftStatusChart } from '@/components/dashboard/ForkliftStatusChart'
 import { RecentRentals } from '@/components/dashboard/RecentRentals';
 import { UpcomingMaintenance } from '@/components/dashboard/UpcomingMaintenance';
 import { forklifts, rentals, maintenances } from '@/data/mockData';
-import { Truck, FileCheck, Wrench, DollarSign } from 'lucide-react';
+import { Container, FileCheck, Wrench, DollarSign } from 'lucide-react';
 
 const Index = () => {
   const totalForklifts = forklifts.length;
@@ -34,13 +34,13 @@ const Index = () => {
           <StatCard
             title="Total da Frota"
             value={totalForklifts}
-            icon={Truck}
+            icon={Container}
             variant="primary"
           />
           <StatCard
             title="Disponíveis"
             value={availableForklifts}
-            icon={Truck}
+            icon={Container}
             variant="success"
           />
           <StatCard
