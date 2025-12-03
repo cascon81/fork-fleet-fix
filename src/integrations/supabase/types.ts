@@ -146,6 +146,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_maintenances_forklift"
+            columns: ["forklift_id"]
+            isOneToOne: false
+            referencedRelation: "forklifts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "maintenances_forklift_id_fkey"
             columns: ["forklift_id"]
             isOneToOne: false
@@ -192,6 +199,13 @@ export type Database = {
           valor_diaria?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_rentals_forklift"
+            columns: ["forklift_id"]
+            isOneToOne: false
+            referencedRelation: "forklifts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "rentals_forklift_id_fkey"
             columns: ["forklift_id"]
