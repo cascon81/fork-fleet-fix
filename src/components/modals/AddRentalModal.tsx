@@ -20,6 +20,7 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { rentalSchema } from '@/lib/validations';
 
 interface AddRentalModalProps {
   open: boolean;
@@ -37,6 +38,7 @@ export function AddRentalModal({ open, onOpenChange }: AddRentalModalProps) {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [availableForklifts, setAvailableForklifts] = useState<any[]>([]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (open && user) {
@@ -58,11 +60,37 @@ export function AddRentalModal({ open, onOpenChange }: AddRentalModalProps) {
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      forkliftId: '',
+      cliente: '',
+      dataInicio: '',
+      dataFim: '',
+      valorDiaria: '',
+    });
+    setErrors({});
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
     
     if (!user) {
       toast.error('Você precisa estar logado para registrar um aluguel');
+      return;
+    }
+
+    const validation = rentalSchema.safeParse({
+      ...formData,
+      valorDiaria: formData.valorDiaria ? parseFloat(formData.valorDiaria) : 0,
+    });
+
+    if (!validation.success) {
+      const fieldErrors: Record<string, string> = {};
+      validation.error.errors.forEach((err) => {
+        if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+      });
+      setErrors(fieldErrors);
       return;
     }
 
@@ -81,7 +109,6 @@ export function AddRentalModal({ open, onOpenChange }: AddRentalModalProps) {
 
       if (rentalError) throw rentalError;
 
-      // Update forklift status to 'alugada'
       const { error: updateError } = await supabase
         .from('forklifts')
         .update({ status: 'alugada' })
@@ -95,15 +122,8 @@ export function AddRentalModal({ open, onOpenChange }: AddRentalModalProps) {
       });
       
       onOpenChange(false);
-      setFormData({
-        forkliftId: '',
-        cliente: '',
-        dataInicio: '',
-        dataFim: '',
-        valorDiaria: '',
-      });
+      resetForm();
     } catch (error) {
-      console.error('Erro ao registrar aluguel:', error);
       toast.error('Erro ao registrar aluguel', {
         description: 'Tente novamente mais tarde',
       });
@@ -113,7 +133,7 @@ export function AddRentalModal({ open, onOpenChange }: AddRentalModalProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(open) => { onOpenChange(open); if (!open) resetForm(); }}>
       <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
           <DialogTitle>Registrar Novo Aluguel</DialogTitle>
@@ -130,8 +150,9 @@ export function AddRentalModal({ open, onOpenChange }: AddRentalModalProps) {
                 placeholder="Empresa Ltda"
                 value={formData.cliente}
                 onChange={(e) => setFormData({ ...formData, cliente: e.target.value })}
-                required
+                className={errors.cliente ? 'border-destructive' : ''}
               />
+              {errors.cliente && <p className="text-sm text-destructive">{errors.cliente}</p>}
             </div>
 
             <div className="space-y-2">
@@ -140,7 +161,7 @@ export function AddRentalModal({ open, onOpenChange }: AddRentalModalProps) {
                 value={formData.forkliftId}
                 onValueChange={(value) => setFormData({ ...formData, forkliftId: value })}
               >
-                <SelectTrigger id="forklift">
+                <SelectTrigger id="forklift" className={errors.forkliftId ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Selecione uma empilhadeira disponível" />
                 </SelectTrigger>
                 <SelectContent>
@@ -157,6 +178,7 @@ export function AddRentalModal({ open, onOpenChange }: AddRentalModalProps) {
                   )}
                 </SelectContent>
               </Select>
+              {errors.forkliftId && <p className="text-sm text-destructive">{errors.forkliftId}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -167,8 +189,9 @@ export function AddRentalModal({ open, onOpenChange }: AddRentalModalProps) {
                   type="date"
                   value={formData.dataInicio}
                   onChange={(e) => setFormData({ ...formData, dataInicio: e.target.value })}
-                  required
+                  className={errors.dataInicio ? 'border-destructive' : ''}
                 />
+                {errors.dataInicio && <p className="text-sm text-destructive">{errors.dataInicio}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="dataFim">Data de Término *</Label>
@@ -177,9 +200,10 @@ export function AddRentalModal({ open, onOpenChange }: AddRentalModalProps) {
                   type="date"
                   value={formData.dataFim}
                   onChange={(e) => setFormData({ ...formData, dataFim: e.target.value })}
-                  required
                   min={formData.dataInicio}
+                  className={errors.dataFim ? 'border-destructive' : ''}
                 />
+                {errors.dataFim && <p className="text-sm text-destructive">{errors.dataFim}</p>}
               </div>
             </div>
 
@@ -191,10 +215,11 @@ export function AddRentalModal({ open, onOpenChange }: AddRentalModalProps) {
                 placeholder="350.00"
                 value={formData.valorDiaria}
                 onChange={(e) => setFormData({ ...formData, valorDiaria: e.target.value })}
-                required
                 min="0"
                 step="0.01"
+                className={errors.valorDiaria ? 'border-destructive' : ''}
               />
+              {errors.valorDiaria && <p className="text-sm text-destructive">{errors.valorDiaria}</p>}
             </div>
           </div>
           <DialogFooter>

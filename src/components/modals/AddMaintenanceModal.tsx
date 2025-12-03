@@ -21,6 +21,7 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { maintenanceSchema } from '@/lib/validations';
 
 interface AddMaintenanceModalProps {
   open: boolean;
@@ -38,6 +39,7 @@ export function AddMaintenanceModal({ open, onOpenChange }: AddMaintenanceModalP
   });
   const [isLoading, setIsLoading] = useState(false);
   const [forklifts, setForklifts] = useState<any[]>([]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (open && user) {
@@ -58,11 +60,37 @@ export function AddMaintenanceModal({ open, onOpenChange }: AddMaintenanceModalP
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      forkliftId: '',
+      tipo: '',
+      descricao: '',
+      dataAgendada: '',
+      custo: '',
+    });
+    setErrors({});
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
     
     if (!user) {
       toast.error('Você precisa estar logado para agendar uma manutenção');
+      return;
+    }
+
+    const validation = maintenanceSchema.safeParse({
+      ...formData,
+      custo: formData.custo || undefined,
+    });
+
+    if (!validation.success) {
+      const fieldErrors: Record<string, string> = {};
+      validation.error.errors.forEach((err) => {
+        if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
+      });
+      setErrors(fieldErrors);
       return;
     }
 
@@ -87,15 +115,8 @@ export function AddMaintenanceModal({ open, onOpenChange }: AddMaintenanceModalP
       });
       
       onOpenChange(false);
-      setFormData({
-        forkliftId: '',
-        tipo: '',
-        descricao: '',
-        dataAgendada: '',
-        custo: '',
-      });
+      resetForm();
     } catch (error) {
-      console.error('Erro ao agendar manutenção:', error);
       toast.error('Erro ao agendar manutenção', {
         description: 'Tente novamente mais tarde',
       });
@@ -105,7 +126,7 @@ export function AddMaintenanceModal({ open, onOpenChange }: AddMaintenanceModalP
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(open) => { onOpenChange(open); if (!open) resetForm(); }}>
       <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
           <DialogTitle>Agendar Nova Manutenção</DialogTitle>
@@ -121,7 +142,7 @@ export function AddMaintenanceModal({ open, onOpenChange }: AddMaintenanceModalP
                 value={formData.forkliftId}
                 onValueChange={(value) => setFormData({ ...formData, forkliftId: value })}
               >
-                <SelectTrigger id="forklift">
+                <SelectTrigger id="forklift" className={errors.forkliftId ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Selecione a empilhadeira" />
                 </SelectTrigger>
                 <SelectContent>
@@ -132,6 +153,7 @@ export function AddMaintenanceModal({ open, onOpenChange }: AddMaintenanceModalP
                   ))}
                 </SelectContent>
               </Select>
+              {errors.forkliftId && <p className="text-sm text-destructive">{errors.forkliftId}</p>}
             </div>
 
             <div className="space-y-2">
@@ -140,7 +162,7 @@ export function AddMaintenanceModal({ open, onOpenChange }: AddMaintenanceModalP
                 value={formData.tipo}
                 onValueChange={(value) => setFormData({ ...formData, tipo: value })}
               >
-                <SelectTrigger id="tipo">
+                <SelectTrigger id="tipo" className={errors.tipo ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -148,18 +170,22 @@ export function AddMaintenanceModal({ open, onOpenChange }: AddMaintenanceModalP
                   <SelectItem value="corretiva">Corretiva</SelectItem>
                 </SelectContent>
               </Select>
+              {errors.tipo && <p className="text-sm text-destructive">{errors.tipo}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="descricao">Descrição *</Label>
+              <Label htmlFor="descricao">Descrição * (máx. 1000 caracteres)</Label>
               <Textarea
                 id="descricao"
                 placeholder="Descreva os serviços a serem realizados..."
                 value={formData.descricao}
                 onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                required
                 rows={3}
+                maxLength={1000}
+                className={errors.descricao ? 'border-destructive' : ''}
               />
+              <p className="text-xs text-muted-foreground">{formData.descricao.length}/1000</p>
+              {errors.descricao && <p className="text-sm text-destructive">{errors.descricao}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -170,8 +196,9 @@ export function AddMaintenanceModal({ open, onOpenChange }: AddMaintenanceModalP
                   type="date"
                   value={formData.dataAgendada}
                   onChange={(e) => setFormData({ ...formData, dataAgendada: e.target.value })}
-                  required
+                  className={errors.dataAgendada ? 'border-destructive' : ''}
                 />
+                {errors.dataAgendada && <p className="text-sm text-destructive">{errors.dataAgendada}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="custo">Custo Estimado (R$)</Label>
@@ -183,7 +210,9 @@ export function AddMaintenanceModal({ open, onOpenChange }: AddMaintenanceModalP
                   onChange={(e) => setFormData({ ...formData, custo: e.target.value })}
                   min="0"
                   step="0.01"
+                  className={errors.custo ? 'border-destructive' : ''}
                 />
+                {errors.custo && <p className="text-sm text-destructive">{errors.custo}</p>}
               </div>
             </div>
           </div>
