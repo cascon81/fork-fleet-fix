@@ -1,4 +1,4 @@
-import { Bell, Search, User, LogOut } from 'lucide-react';
+import { Bell, Search, User, LogOut, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -17,20 +17,25 @@ import {
 } from '@/components/ui/popover';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
+import { useDynamicNotifications } from '@/hooks/useDynamicNotifications';
 
 interface HeaderProps {
   title: string;
 }
 
-const notifications = [
-  { id: 1, title: 'Manutenção agendada', message: 'EMP-0001 precisa de revisão em 3 dias', time: '2h atrás' },
-  { id: 2, title: 'Aluguel atrasado', message: 'Distribuidora Norte Sul - 6 dias de atraso', time: '5h atrás' },
-  { id: 3, title: 'Nova solicitação', message: 'Cliente Armazém Central solicitou orçamento', time: '1d atrás' },
-];
-
 export function Header({ title }: HeaderProps) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { notifications, isLoading } = useDynamicNotifications();
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'alert': return '🚨';
+      case 'maintenance': return '🔧';
+      case 'rental': return '📋';
+      default: return '📌';
+    }
+  };
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6">
@@ -51,34 +56,54 @@ export function Header({ title }: HeaderProps) {
           <PopoverTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5 text-muted-foreground" />
-              <span className="absolute right-1.5 top-1.5 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-destructive"></span>
-              </span>
+              {notifications.length > 0 && (
+                <span className="absolute right-1.5 top-1.5 flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-destructive"></span>
+                </span>
+              )}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-80 p-0" align="end">
             <div className="border-b border-border px-4 py-3">
               <h4 className="font-semibold text-foreground">Notificações</h4>
-              <p className="text-xs text-muted-foreground">{notifications.length} novas</p>
+              <p className="text-xs text-muted-foreground">
+                {notifications.length} {notifications.length === 1 ? 'notificação' : 'notificações'}
+              </p>
             </div>
             <div className="max-h-80 overflow-y-auto">
-              {notifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  className="flex flex-col gap-1 border-b border-border px-4 py-3 hover:bg-secondary/50 cursor-pointer transition-colors"
-                >
-                  <p className="text-sm font-medium text-foreground">{notification.title}</p>
-                  <p className="text-xs text-muted-foreground">{notification.message}</p>
-                  <p className="text-xs text-muted-foreground/70">{notification.time}</p>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
-              ))}
+              ) : notifications.length > 0 ? (
+                notifications.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className="flex flex-col gap-1 border-b border-border px-4 py-3 hover:bg-secondary/50 cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span>{getNotificationIcon(notification.type)}</span>
+                      <p className="text-sm font-medium text-foreground">{notification.title}</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground pl-6">{notification.message}</p>
+                    <p className="text-xs text-muted-foreground/70 pl-6">{notification.time}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                  <Bell className="h-8 w-8 mb-2 opacity-50" />
+                  <p className="text-sm">Nenhuma notificação</p>
+                </div>
+              )}
             </div>
-            <div className="border-t border-border px-4 py-2">
-              <Button variant="ghost" size="sm" className="w-full text-primary">
-                Ver todas
-              </Button>
-            </div>
+            {notifications.length > 0 && (
+              <div className="border-t border-border px-4 py-2">
+                <Button variant="ghost" size="sm" className="w-full text-primary">
+                  Ver todas
+                </Button>
+              </div>
+            )}
           </PopoverContent>
         </Popover>
 
