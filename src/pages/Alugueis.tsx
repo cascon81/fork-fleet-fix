@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Plus, Eye, MoreHorizontal, Search, Loader2 } from 'lucide-react';
+import { Plus, Eye, MoreHorizontal, Search, Loader2, FileText, Mail } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,7 +24,9 @@ import {
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
-import type { DbRental, DbForklift } from '@/types/forklift';
+import type { DbRental, DbForklift, DbClient } from '@/types/forklift';
+import { generateContractPDF } from '@/lib/generateContractPDF';
+import { useNotifications } from '@/hooks/useNotifications';
 
 const statusConfig = {
   ativo: { label: 'Ativo', variant: 'success' as const },
@@ -38,23 +40,28 @@ const Alugueis = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [rentals, setRentals] = useState<DbRental[]>([]);
   const [forklifts, setForklifts] = useState<DbForklift[]>([]);
+  const [clients, setClients] = useState<DbClient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { sendRentalCreatedNotification } = useNotifications();
 
   const fetchData = async () => {
     if (!user) return;
 
     try {
       setIsLoading(true);
-      const [rentalsRes, forkliftsRes] = await Promise.all([
+      const [rentalsRes, forkliftsRes, clientsRes] = await Promise.all([
         supabase.from('rentals').select('*').order('created_at', { ascending: false }),
         supabase.from('forklifts').select('*'),
+        supabase.from('clients').select('*'),
       ]);
 
       if (rentalsRes.error) throw rentalsRes.error;
       if (forkliftsRes.error) throw forkliftsRes.error;
+      if (clientsRes.error) throw clientsRes.error;
 
       setRentals(rentalsRes.data || []);
       setForklifts(forkliftsRes.data || []);
+      setClients(clientsRes.data || []);
     } catch (error: any) {
       toast.error('Erro ao carregar aluguéis: ' + error.message);
     } finally {
@@ -67,6 +74,56 @@ const Alugueis = () => {
   }, [user]);
 
   const getForklift = (id: string) => forklifts.find(f => f.id === id);
+  const getClientByName = (name: string) => clients.find(c => c.nome === name);
+
+  const handleGenerateContract = (rental: DbRental) => {
+    const forklift = getForklift(rental.forklift_id);
+    const client = getClientByName(rental.cliente);
+
+    if (!forklift || !client) {
+      toast.error('Dados incompletos para gerar contrato');
+      return;
+    }
+
+    generateContractPDF({
+      clientName: client.nome,
+      clientCnpj: client.cnpj,
+      clientAddress: client.endereco,
+      clientPhone: client.telefone,
+      clientEmail: client.email,
+      clientContact: client.contato,
+      forkliftPlaca: forklift.placa,
+      forkliftModelo: forklift.modelo,
+      forkliftMarca: forklift.marca,
+      forkliftCapacidade: forklift.capacidade,
+      forkliftAno: forklift.ano_fabricacao,
+      startDate: rental.data_inicio,
+      endDate: rental.data_fim,
+      dailyRate: Number(rental.valor_diaria),
+    });
+
+    toast.success('Contrato gerado com sucesso!');
+  };
+
+  const handleSendNotification = async (rental: DbRental) => {
+    const forklift = getForklift(rental.forklift_id);
+    const client = getClientByName(rental.cliente);
+
+    if (!forklift || !client) {
+      toast.error('Dados incompletos para enviar notificação');
+      return;
+    }
+
+    await sendRentalCreatedNotification(
+      client.email,
+      client.nome,
+      forklift.placa,
+      `${forklift.marca} ${forklift.modelo}`,
+      format(new Date(rental.data_inicio), 'dd/MM/yyyy'),
+      format(new Date(rental.data_fim), 'dd/MM/yyyy'),
+      Number(rental.valor_diaria)
+    );
+  };
 
   const filteredRentals = useMemo(() => {
     return rentals.filter(rental => {
@@ -210,6 +267,14 @@ const Alugueis = () => {
                             <DropdownMenuItem>
                               <Eye className="mr-2 h-4 w-4" />
                               Ver detalhes
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleGenerateContract(rental)}>
+                              <FileText className="mr-2 h-4 w-4" />
+                              Gerar Contrato PDF
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSendNotification(rental)}>
+                              <Mail className="mr-2 h-4 w-4" />
+                              Enviar E-mail
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
