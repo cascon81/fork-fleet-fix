@@ -28,8 +28,9 @@ const menuItems = [{
   path: '/relatorios'
 }];
 export function Sidebar() {
-  const { signOut } = useAuth();
-  
+  const {
+    signOut
+  } = useAuth();
   return <aside className="fixed left-0 top-0 z-40 h-screen w-64 gradient-sidebar border-r border-sidebar-border">
       <div className="flex h-full flex-col">
         {/* Logo */}
@@ -41,7 +42,7 @@ export function Sidebar() {
             <h1 className="text-base font-bold text-sidebar-foreground tracking-tight leading-tight">
               Nevalf Empilhadeiras
             </h1>
-            <p className="text-xs text-sidebar-foreground/60 font-medium mt-0.5">Gestão de Frotas</p>
+            <p className="text-xs text-sidebar-foreground/60 font-medium mt-0.5">Gestão de Frota</p>
           </div>
         </div>
 
