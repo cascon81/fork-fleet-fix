@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { useTrends } from '@/hooks/useTrends';
+import { generateReportPDF } from '@/lib/generateReportPDF';
 import { 
   BarChart, 
   Bar, 
@@ -17,10 +19,9 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  Legend, 
   ResponsiveContainer 
 } from 'recharts';
-import { Download, TrendingUp, Calendar, Loader2 } from 'lucide-react';
+import { Download, TrendingUp, TrendingDown, Calendar, Loader2 } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
 
 type DbForklift = Tables<'forklifts'>;
@@ -33,6 +34,8 @@ const Relatorios = () => {
   const [rentals, setRentals] = useState<DbRental[]>([]);
   const [maintenances, setMaintenances] = useState<DbMaintenance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const trends = useTrends(forklifts, rentals);
 
   useEffect(() => {
     if (user) {
@@ -67,13 +70,13 @@ const Relatorios = () => {
     }
   };
 
-  // Calcular receita mensal (mesmo cálculo do Dashboard)
+  // Calcular receita mensal
   const activeRentals = rentals.filter(r => r.status === 'ativo' || r.status === 'atrasado');
   const monthlyRevenue = activeRentals.reduce((sum, r) => {
     const days = Math.ceil(
       (new Date(r.data_fim).getTime() - new Date(r.data_inicio).getTime()) / (1000 * 60 * 60 * 24)
     );
-    return sum + (Number(r.valor_diaria) * days);
+    return sum + (Number(r.valor_diaria) * Math.max(days, 1));
   }, 0);
 
   // Taxa de utilização
@@ -98,13 +101,13 @@ const Relatorios = () => {
 
   const COLORS = ['hsl(142, 76%, 36%)', 'hsl(217, 91%, 60%)', 'hsl(38, 92%, 50%)'];
 
-  // Receita por mês (agrupa os aluguéis por mês)
+  // Receita por mês
   const revenueByMonth = rentals.reduce((acc, rental) => {
     const month = new Date(rental.data_inicio).toLocaleDateString('pt-BR', { month: 'short' });
     const days = Math.ceil(
       (new Date(rental.data_fim).getTime() - new Date(rental.data_inicio).getTime()) / (1000 * 60 * 60 * 24)
     );
-    const value = Number(rental.valor_diaria) * days;
+    const value = Number(rental.valor_diaria) * Math.max(days, 1);
     
     const existing = acc.find(item => item.month === month);
     if (existing) {
@@ -139,6 +142,41 @@ const Relatorios = () => {
     return `R$ ${value.toLocaleString('pt-BR')}`;
   };
 
+  const handleExportPDF = () => {
+    generateReportPDF({
+      utilizationRate,
+      monthlyRevenue,
+      averageTicket,
+      maintenanceCost,
+      forkliftsTotal: forklifts.length,
+      forkliftsAvailable: forklifts.filter(f => f.status === 'disponivel').length,
+      forkliftsRented: forklifts.filter(f => f.status === 'alugada').length,
+      forkliftsMaintenance: forklifts.filter(f => f.status === 'manutencao').length,
+      activeRentals: activeRentals.length,
+      totalRentals: rentals.length,
+      preventiveMaintenances: maintenances.filter(m => m.tipo === 'preventiva').length,
+      correctiveMaintenances: maintenances.filter(m => m.tipo === 'corretiva').length,
+      trends: {
+        utilizationTrend: trends.utilizationTrend,
+        revenueTrend: trends.revenueTrend,
+      },
+    });
+    toast({
+      title: 'Relatório exportado',
+      description: 'O PDF foi gerado e baixado com sucesso.',
+    });
+  };
+
+  const TrendIndicator = ({ value, label }: { value: number; label: string }) => {
+    const isPositive = value >= 0;
+    return (
+      <div className={`flex items-center gap-2 text-sm ${isPositive ? 'text-success' : 'text-destructive'}`}>
+        {isPositive ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+        <span>{isPositive ? '+' : ''}{value.toFixed(1)}% {label}</span>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <MainLayout title="Relatórios e Análises">
@@ -159,7 +197,7 @@ const Relatorios = () => {
               Visualize métricas e análises detalhadas da sua frota
             </p>
           </div>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={handleExportPDF}>
             <Download className="h-4 w-4" />
             Exportar Relatório PDF
           </Button>
@@ -173,10 +211,7 @@ const Relatorios = () => {
               <CardTitle className="text-3xl">{utilizationRate}%</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-2 text-sm text-success">
-                <TrendingUp className="h-4 w-4" />
-                <span>+12% vs mês anterior</span>
-              </div>
+              <TrendIndicator value={trends.utilizationTrend} label="vs mês anterior" />
             </CardContent>
           </Card>
 
@@ -186,10 +221,7 @@ const Relatorios = () => {
               <CardTitle className="text-3xl">{formatCurrency(monthlyRevenue)}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-2 text-sm text-success">
-                <TrendingUp className="h-4 w-4" />
-                <span>+8% vs mês anterior</span>
-              </div>
+              <TrendIndicator value={trends.revenueTrend} label="vs mês anterior" />
             </CardContent>
           </Card>
 

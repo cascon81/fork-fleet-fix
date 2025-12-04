@@ -7,6 +7,7 @@ import { UpcomingMaintenance } from '@/components/dashboard/UpcomingMaintenance'
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { useTrends } from '@/hooks/useTrends';
 import { Container, FileCheck, Wrench, DollarSign, Loader2 } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
 
@@ -20,6 +21,8 @@ const Index = () => {
   const [rentals, setRentals] = useState<DbRental[]>([]);
   const [maintenances, setMaintenances] = useState<DbMaintenance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const trends = useTrends(forklifts, rentals);
 
   useEffect(() => {
     if (user) {
@@ -64,7 +67,7 @@ const Index = () => {
     const days = Math.ceil(
       (new Date(r.data_fim).getTime() - new Date(r.data_inicio).getTime()) / (1000 * 60 * 60 * 24)
     );
-    return sum + (Number(r.valor_diaria) * days);
+    return sum + (Number(r.valor_diaria) * Math.max(days, 1));
   }, 0);
 
   const statusChartData = [
@@ -141,13 +144,19 @@ const Index = () => {
             title="Aluguéis Ativos"
             value={activeRentals.length}
             icon={FileCheck}
-            trend={{ value: 12, isPositive: true }}
+            trend={trends.rentalsTrend !== 0 ? { 
+              value: Math.abs(trends.rentalsTrend), 
+              isPositive: trends.rentalsTrend >= 0 
+            } : undefined}
           />
           <StatCard
             title="Receita Mensal"
             value={`R$ ${monthlyRevenue.toLocaleString('pt-BR')}`}
             icon={DollarSign}
-            trend={{ value: 8, isPositive: true }}
+            trend={trends.revenueTrend !== 0 ? { 
+              value: Math.abs(trends.revenueTrend), 
+              isPositive: trends.revenueTrend >= 0 
+            } : undefined}
           />
         </div>
 
