@@ -4,10 +4,12 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { ForkliftStatusChart } from '@/components/dashboard/ForkliftStatusChart';
 import { RecentRentals } from '@/components/dashboard/RecentRentals';
 import { UpcomingMaintenance } from '@/components/dashboard/UpcomingMaintenance';
+import { PeriodSelector, type PeriodType } from '@/components/common/PeriodSelector';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { useTrends } from '@/hooks/useTrends';
+import { usePeriodFilter } from '@/hooks/usePeriodFilter';
 import { Container, FileCheck, Wrench, DollarSign, Loader2 } from 'lucide-react';
 import type { Tables } from '@/integrations/supabase/types';
 
@@ -22,7 +24,8 @@ const Index = () => {
   const [maintenances, setMaintenances] = useState<DbMaintenance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const trends = useTrends(forklifts, rentals);
+  const { period, setPeriod, dateRange, getPeriodLabel } = usePeriodFilter('month');
+  const trends = useTrends(forklifts, rentals, period);
 
   useEffect(() => {
     if (user) {
@@ -63,12 +66,6 @@ const Index = () => {
   const maintenanceForklifts = forklifts.filter(f => f.status === 'manutencao').length;
 
   const activeRentals = rentals.filter(r => r.status === 'ativo' || r.status === 'atrasado');
-  const monthlyRevenue = activeRentals.reduce((sum, r) => {
-    const days = Math.ceil(
-      (new Date(r.data_fim).getTime() - new Date(r.data_inicio).getTime()) / (1000 * 60 * 60 * 24)
-    );
-    return sum + (Number(r.valor_diaria) * Math.max(days, 1));
-  }, 0);
 
   const statusChartData = [
     { name: 'Disponíveis', value: availableForklifts, color: 'hsl(142, 76%, 36%)' },
@@ -113,6 +110,14 @@ const Index = () => {
 
   const overdueRentals = rentals.filter(r => r.status === 'atrasado').length;
 
+  const getPeriodTitle = () => {
+    switch (period) {
+      case 'month': return 'Receita Mensal';
+      case 'quarter': return 'Receita Trimestral';
+      case 'year': return 'Receita Anual';
+    }
+  };
+
   if (isLoading) {
     return (
       <MainLayout title="Dashboard">
@@ -126,6 +131,14 @@ const Index = () => {
   return (
     <MainLayout title="Dashboard">
       <div className="space-y-6">
+        {/* Period Selector */}
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Período: <span className="font-medium text-foreground">{dateRange.label}</span>
+          </p>
+          <PeriodSelector value={period} onChange={setPeriod} />
+        </div>
+
         {/* Stats Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
@@ -146,16 +159,18 @@ const Index = () => {
             icon={FileCheck}
             trend={trends.rentalsTrend !== 0 ? { 
               value: Math.abs(trends.rentalsTrend), 
-              isPositive: trends.rentalsTrend >= 0 
+              isPositive: trends.rentalsTrend >= 0,
+              label: getPeriodLabel(),
             } : undefined}
           />
           <StatCard
-            title="Receita Mensal"
-            value={`R$ ${monthlyRevenue.toLocaleString('pt-BR')}`}
+            title={getPeriodTitle()}
+            value={`R$ ${trends.currentRevenue.toLocaleString('pt-BR')}`}
             icon={DollarSign}
             trend={trends.revenueTrend !== 0 ? { 
               value: Math.abs(trends.revenueTrend), 
-              isPositive: trends.revenueTrend >= 0 
+              isPositive: trends.revenueTrend >= 0,
+              label: getPeriodLabel(),
             } : undefined}
           />
         </div>

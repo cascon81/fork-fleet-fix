@@ -17,6 +17,7 @@ interface ReportData {
     utilizationTrend: number;
     revenueTrend: number;
   };
+  periodLabel?: string;
 }
 
 export const generateReportPDF = (data: ReportData) => {
@@ -28,18 +29,24 @@ export const generateReportPDF = (data: ReportData) => {
   doc.setFont('helvetica', 'bold');
   doc.text('Relatório Gerencial', pageWidth / 2, 25, { align: 'center' });
   
-  doc.setFontSize(10);
+  doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, pageWidth / 2, 32, { align: 'center' });
+  if (data.periodLabel) {
+    doc.text(`Período: ${data.periodLabel}`, pageWidth / 2, 32, { align: 'center' });
+  }
+  
+  doc.setFontSize(10);
+  doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, pageWidth / 2, data.periodLabel ? 39 : 32, { align: 'center' });
   
   // Line separator
+  const separatorY = data.periodLabel ? 45 : 38;
   doc.setDrawColor(200, 200, 200);
-  doc.line(20, 38, pageWidth - 20, 38);
+  doc.line(20, separatorY, pageWidth - 20, separatorY);
   
   // KPIs Section
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('Indicadores Principais', 20, 50);
+  doc.text('Indicadores Principais', 20, separatorY + 12);
   
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
@@ -50,10 +57,10 @@ export const generateReportPDF = (data: ReportData) => {
   
   const formatTrend = (value: number) => {
     const sign = value >= 0 ? '+' : '';
-    return `${sign}${value.toFixed(1)}% vs mês anterior`;
+    return `${sign}${value.toFixed(1)}% vs período anterior`;
   };
   
-  let yPos = 62;
+  let yPos = separatorY + 24;
   const lineHeight = 8;
   
   // Utilization Rate

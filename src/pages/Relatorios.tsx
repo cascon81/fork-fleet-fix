@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { PeriodSelector, type PeriodType } from '@/components/common/PeriodSelector';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { useTrends } from '@/hooks/useTrends';
+import { usePeriodFilter } from '@/hooks/usePeriodFilter';
 import { generateReportPDF } from '@/lib/generateReportPDF';
 import { 
   BarChart, 
@@ -35,7 +37,8 @@ const Relatorios = () => {
   const [maintenances, setMaintenances] = useState<DbMaintenance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const trends = useTrends(forklifts, rentals);
+  const { period, setPeriod, dateRange, isInPeriod, getPeriodLabel } = usePeriodFilter('month');
+  const trends = useTrends(forklifts, rentals, period);
 
   useEffect(() => {
     if (user) {
@@ -70,27 +73,27 @@ const Relatorios = () => {
     }
   };
 
-  // Calcular receita mensal
-  const activeRentals = rentals.filter(r => r.status === 'ativo' || r.status === 'atrasado');
-  const monthlyRevenue = activeRentals.reduce((sum, r) => {
-    const days = Math.ceil(
-      (new Date(r.data_fim).getTime() - new Date(r.data_inicio).getTime()) / (1000 * 60 * 60 * 24)
-    );
-    return sum + (Number(r.valor_diaria) * Math.max(days, 1));
-  }, 0);
+  // Filter data by period
+  const periodRentals = rentals.filter(r => {
+    const start = new Date(r.data_inicio);
+    const end = new Date(r.data_fim);
+    return start <= dateRange.end && end >= dateRange.start;
+  });
+
+  const periodMaintenances = maintenances.filter(m => isInPeriod(m.data_agendada));
 
   // Taxa de utilização
   const utilizationRate = forklifts.length > 0 
     ? Math.round((forklifts.filter(f => f.status === 'alugada').length / forklifts.length) * 100) 
     : 0;
 
-  // Ticket médio
-  const averageTicket = activeRentals.length > 0
-    ? Math.round(activeRentals.reduce((sum, r) => sum + Number(r.valor_diaria), 0) / activeRentals.length)
+  // Ticket médio do período
+  const averageTicket = periodRentals.length > 0
+    ? Math.round(periodRentals.reduce((sum, r) => sum + Number(r.valor_diaria), 0) / periodRentals.length)
     : 0;
 
-  // Custo de manutenção
-  const maintenanceCost = maintenances.reduce((sum, m) => sum + (Number(m.custo) || 0), 0);
+  // Custo de manutenção do período
+  const maintenanceCost = periodMaintenances.reduce((sum, m) => sum + (Number(m.custo) || 0), 0);
 
   // Dados para gráficos
   const statusData = [
@@ -101,27 +104,44 @@ const Relatorios = () => {
 
   const COLORS = ['hsl(142, 76%, 36%)', 'hsl(217, 91%, 60%)', 'hsl(38, 92%, 50%)'];
 
-  // Receita por mês
-  const revenueByMonth = rentals.reduce((acc, rental) => {
-    const month = new Date(rental.data_inicio).toLocaleDateString('pt-BR', { month: 'short' });
-    const days = Math.ceil(
-      (new Date(rental.data_fim).getTime() - new Date(rental.data_inicio).getTime()) / (1000 * 60 * 60 * 24)
-    );
-    const value = Number(rental.valor_diaria) * Math.max(days, 1);
+  // Receita por período (agrupado conforme período selecionado)
+  const getRevenueData = () => {
+    const groupedData: { label: string; receita: number }[] = [];
     
-    const existing = acc.find(item => item.month === month);
-    if (existing) {
-      existing.receita += value;
-    } else {
-      acc.push({ month, receita: value });
-    }
-    return acc;
-  }, [] as { month: string; receita: number }[]);
+    periodRentals.forEach(rental => {
+      const startDate = new Date(rental.data_inicio);
+      let label: string;
+      
+      if (period === 'year') {
+        label = startDate.toLocaleDateString('pt-BR', { month: 'short' });
+      } else if (period === 'quarter') {
+        label = `Sem ${Math.ceil(startDate.getDate() / 7)}`;
+      } else {
+        label = startDate.toLocaleDateString('pt-BR', { day: '2-digit' });
+      }
+      
+      const days = Math.ceil(
+        (new Date(rental.data_fim).getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      const value = Number(rental.valor_diaria) * Math.max(days, 1);
+      
+      const existing = groupedData.find(item => item.label === label);
+      if (existing) {
+        existing.receita += value;
+      } else {
+        groupedData.push({ label, receita: value });
+      }
+    });
+    
+    return groupedData;
+  };
+
+  const revenueData = getRevenueData();
 
   // Manutenções por tipo
   const maintenanceData = [
-    { tipo: 'Preventivas', count: maintenances.filter(m => m.tipo === 'preventiva').length },
-    { tipo: 'Corretivas', count: maintenances.filter(m => m.tipo === 'corretiva').length },
+    { tipo: 'Preventivas', count: periodMaintenances.filter(m => m.tipo === 'preventiva').length },
+    { tipo: 'Corretivas', count: periodMaintenances.filter(m => m.tipo === 'corretiva').length },
   ];
 
   // Utilização da frota por marca
@@ -142,24 +162,33 @@ const Relatorios = () => {
     return `R$ ${value.toLocaleString('pt-BR')}`;
   };
 
+  const getRevenueLabel = () => {
+    switch (period) {
+      case 'month': return 'Receita Mensal';
+      case 'quarter': return 'Receita Trimestral';
+      case 'year': return 'Receita Anual';
+    }
+  };
+
   const handleExportPDF = () => {
     generateReportPDF({
       utilizationRate,
-      monthlyRevenue,
+      monthlyRevenue: trends.currentRevenue,
       averageTicket,
       maintenanceCost,
       forkliftsTotal: forklifts.length,
       forkliftsAvailable: forklifts.filter(f => f.status === 'disponivel').length,
       forkliftsRented: forklifts.filter(f => f.status === 'alugada').length,
       forkliftsMaintenance: forklifts.filter(f => f.status === 'manutencao').length,
-      activeRentals: activeRentals.length,
-      totalRentals: rentals.length,
-      preventiveMaintenances: maintenances.filter(m => m.tipo === 'preventiva').length,
-      correctiveMaintenances: maintenances.filter(m => m.tipo === 'corretiva').length,
+      activeRentals: periodRentals.filter(r => r.status === 'ativo').length,
+      totalRentals: periodRentals.length,
+      preventiveMaintenances: periodMaintenances.filter(m => m.tipo === 'preventiva').length,
+      correctiveMaintenances: periodMaintenances.filter(m => m.tipo === 'corretiva').length,
       trends: {
         utilizationTrend: trends.utilizationTrend,
         revenueTrend: trends.revenueTrend,
       },
+      periodLabel: dateRange.label,
     });
     toast({
       title: 'Relatório exportado',
@@ -191,16 +220,22 @@ const Relatorios = () => {
     <MainLayout title="Relatórios e Análises">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex flex-col gap-1">
             <p className="text-muted-foreground">
               Visualize métricas e análises detalhadas da sua frota
             </p>
+            <p className="text-sm text-muted-foreground">
+              Período: <span className="font-medium text-foreground">{dateRange.label}</span>
+            </p>
           </div>
-          <Button className="gap-2" onClick={handleExportPDF}>
-            <Download className="h-4 w-4" />
-            Exportar Relatório PDF
-          </Button>
+          <div className="flex items-center gap-3">
+            <PeriodSelector value={period} onChange={setPeriod} />
+            <Button className="gap-2" onClick={handleExportPDF}>
+              <Download className="h-4 w-4" />
+              Exportar PDF
+            </Button>
+          </div>
         </div>
 
         {/* KPIs Principais */}
@@ -211,17 +246,17 @@ const Relatorios = () => {
               <CardTitle className="text-3xl">{utilizationRate}%</CardTitle>
             </CardHeader>
             <CardContent>
-              <TrendIndicator value={trends.utilizationTrend} label="vs mês anterior" />
+              <TrendIndicator value={trends.utilizationTrend} label={getPeriodLabel()} />
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>Receita Mensal</CardDescription>
-              <CardTitle className="text-3xl">{formatCurrency(monthlyRevenue)}</CardTitle>
+              <CardDescription>{getRevenueLabel()}</CardDescription>
+              <CardTitle className="text-3xl">{formatCurrency(trends.currentRevenue)}</CardTitle>
             </CardHeader>
             <CardContent>
-              <TrendIndicator value={trends.revenueTrend} label="vs mês anterior" />
+              <TrendIndicator value={trends.revenueTrend} label={getPeriodLabel()} />
             </CardContent>
           </Card>
 
@@ -245,7 +280,7 @@ const Relatorios = () => {
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>total registrado</span>
+                <span>no período</span>
               </div>
             </CardContent>
           </Card>
@@ -292,14 +327,16 @@ const Relatorios = () => {
           <Card>
             <CardHeader>
               <CardTitle>Evolução da Receita</CardTitle>
-              <CardDescription>Por mês de início do aluguel</CardDescription>
+              <CardDescription>
+                {period === 'month' ? 'Por dia' : period === 'quarter' ? 'Por semana' : 'Por mês'}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              {revenueByMonth.length > 0 ? (
+              {revenueData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={revenueByMonth}>
+                  <LineChart data={revenueData}>
                     <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                    <XAxis dataKey="month" />
+                    <XAxis dataKey="label" />
                     <YAxis />
                     <Tooltip 
                       formatter={(value) => [`R$ ${Number(value).toLocaleString('pt-BR')}`, 'Receita']}
@@ -315,7 +352,7 @@ const Relatorios = () => {
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                  Nenhum aluguel registrado
+                  Nenhum aluguel no período
                 </div>
               )}
             </CardContent>
@@ -350,10 +387,10 @@ const Relatorios = () => {
           <Card>
             <CardHeader>
               <CardTitle>Manutenções por Tipo</CardTitle>
-              <CardDescription>Distribuição de preventivas vs corretivas</CardDescription>
+              <CardDescription>No período selecionado</CardDescription>
             </CardHeader>
             <CardContent>
-              {maintenances.length > 0 ? (
+              {periodMaintenances.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={maintenanceData} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
@@ -365,7 +402,7 @@ const Relatorios = () => {
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                  Nenhuma manutenção registrada
+                  Nenhuma manutenção no período
                 </div>
               )}
             </CardContent>
@@ -376,7 +413,7 @@ const Relatorios = () => {
         <Card>
           <CardHeader>
             <CardTitle>Insights e Recomendações</CardTitle>
-            <CardDescription>Análise automática baseada nos dados</CardDescription>
+            <CardDescription>Análise automática baseada nos dados do período</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -395,7 +432,7 @@ const Relatorios = () => {
                 </div>
               )}
 
-              {maintenances.filter(m => m.tipo === 'preventiva' && m.status === 'agendada').length > 0 && (
+              {periodMaintenances.filter(m => m.tipo === 'preventiva' && m.status === 'agendada').length > 0 && (
                 <div className="flex items-start gap-3 rounded-lg bg-warning/10 border border-warning/20 p-4">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-warning/20">
                     <Calendar className="h-4 w-4 text-warning" />
@@ -403,8 +440,8 @@ const Relatorios = () => {
                   <div>
                     <p className="font-medium text-foreground">Manutenções preventivas agendadas</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {maintenances.filter(m => m.tipo === 'preventiva' && m.status === 'agendada').length} manutenções 
-                      preventivas programadas. Isso ajuda a reduzir custos com corretivas.
+                      {periodMaintenances.filter(m => m.tipo === 'preventiva' && m.status === 'agendada').length} manutenções 
+                      preventivas programadas no período. Isso ajuda a reduzir custos com corretivas.
                     </p>
                   </div>
                 </div>
@@ -424,15 +461,20 @@ const Relatorios = () => {
                 </div>
               )}
 
-              {rentals.length > 0 && (
+              {periodRentals.length > 0 && (
                 <div className="flex items-start gap-3 rounded-lg bg-info/10 border border-info/20 p-4">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-info/20">
                     <BarChart className="h-4 w-4 text-info" />
                   </div>
                   <div>
-                    <p className="font-medium text-foreground">Acompanhe sua receita</p>
+                    <p className="font-medium text-foreground">Resumo do período</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Você tem {rentals.length} aluguel(éis) registrado(s) com receita estimada de R$ {monthlyRevenue.toLocaleString('pt-BR')}.
+                      {periodRentals.length} aluguel(éis) no período com receita de R$ {trends.currentRevenue.toLocaleString('pt-BR')}.
+                      {trends.revenueTrend !== 0 && (
+                        <span className={trends.revenueTrend >= 0 ? ' text-success' : ' text-destructive'}>
+                          {' '}({trends.revenueTrend >= 0 ? '+' : ''}{trends.revenueTrend.toFixed(1)}% {getPeriodLabel()})
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
