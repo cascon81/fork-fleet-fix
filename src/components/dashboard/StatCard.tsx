@@ -8,6 +8,7 @@ interface StatCardProps {
   trend?: {
     value: number;
     isPositive: boolean;
+    label?: string;
   };
   variant?: 'default' | 'primary' | 'success' | 'warning' | 'destructive';
 }
@@ -43,7 +44,7 @@ export function StatCard({ title, value, icon: Icon, trend, variant = 'default' 
               "mt-2 text-sm font-medium",
               trend.isPositive ? "text-success" : "text-destructive"
             )}>
-              {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}% vs mês anterior
+              {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}% {trend.label || 'vs mês anterior'}
             </p>
           )}
         </div>
