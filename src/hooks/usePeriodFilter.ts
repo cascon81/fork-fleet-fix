@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import type { PeriodType } from '@/components/common/PeriodSelector';
+import type { PeriodType, CustomDateRange } from '@/components/common/PeriodSelector';
 
 interface PeriodRange {
   start: Date;
@@ -11,6 +11,10 @@ interface PeriodRange {
 
 export function usePeriodFilter(initialPeriod: PeriodType = 'month') {
   const [period, setPeriod] = useState<PeriodType>(initialPeriod);
+  const [customRange, setCustomRange] = useState<CustomDateRange>({
+    from: undefined,
+    to: undefined,
+  });
 
   const dateRange = useMemo((): PeriodRange => {
     const now = new Date();
@@ -49,6 +53,23 @@ export function usePeriodFilter(initialPeriod: PeriodType = 'month') {
         label = `Ano ${currentYear}`;
         break;
 
+      case 'custom':
+        if (customRange.from && customRange.to) {
+          start = customRange.from;
+          end = customRange.to;
+          const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+          previousStart = new Date(start.getTime() - (days + 1) * 24 * 60 * 60 * 1000);
+          previousEnd = new Date(start.getTime() - 24 * 60 * 60 * 1000);
+          label = `${start.toLocaleDateString('pt-BR')} - ${end.toLocaleDateString('pt-BR')}`;
+        } else {
+          start = new Date(currentYear, currentMonth, 1);
+          end = new Date(currentYear, currentMonth + 1, 0);
+          previousStart = new Date(currentYear, currentMonth - 1, 1);
+          previousEnd = new Date(currentYear, currentMonth, 0);
+          label = 'Selecione um período';
+        }
+        break;
+
       default:
         start = new Date(currentYear, currentMonth, 1);
         end = new Date(currentYear, currentMonth + 1, 0);
@@ -58,7 +79,7 @@ export function usePeriodFilter(initialPeriod: PeriodType = 'month') {
     }
 
     return { start, end, previousStart, previousEnd, label };
-  }, [period]);
+  }, [period, customRange]);
 
   const isInPeriod = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -75,6 +96,7 @@ export function usePeriodFilter(initialPeriod: PeriodType = 'month') {
       case 'month': return 'vs mês anterior';
       case 'quarter': return 'vs trimestre anterior';
       case 'year': return 'vs ano anterior';
+      case 'custom': return 'vs período anterior';
       default: return 'vs período anterior';
     }
   };
@@ -82,6 +104,8 @@ export function usePeriodFilter(initialPeriod: PeriodType = 'month') {
   return {
     period,
     setPeriod,
+    customRange,
+    setCustomRange,
     dateRange,
     isInPeriod,
     isInPreviousPeriod,
