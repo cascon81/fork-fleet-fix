@@ -3,6 +3,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PeriodSelector, type PeriodType } from '@/components/common/PeriodSelector';
+import { PeriodComparisonChart } from '@/components/reports/PeriodComparisonChart';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -37,8 +38,8 @@ const Relatorios = () => {
   const [maintenances, setMaintenances] = useState<DbMaintenance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const { period, setPeriod, dateRange, isInPeriod, getPeriodLabel } = usePeriodFilter('month');
-  const trends = useTrends(forklifts, rentals, period);
+  const { period, setPeriod, customRange, setCustomRange, dateRange, isInPeriod, getPeriodLabel } = usePeriodFilter('month');
+  const trends = useTrends(forklifts, rentals, period, customRange);
 
   useEffect(() => {
     if (user) {
@@ -230,7 +231,12 @@ const Relatorios = () => {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <PeriodSelector value={period} onChange={setPeriod} />
+            <PeriodSelector 
+              value={period} 
+              onChange={setPeriod}
+              customRange={customRange}
+              onCustomRangeChange={setCustomRange}
+            />
             <Button className="gap-2" onClick={handleExportPDF}>
               <Download className="h-4 w-4" />
               Exportar PDF
@@ -408,6 +414,9 @@ const Relatorios = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Comparação de Períodos */}
+        <PeriodComparisonChart rentals={rentals} />
 
         {/* Insights e Recomendações */}
         <Card>

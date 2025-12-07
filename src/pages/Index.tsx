@@ -24,8 +24,8 @@ const Index = () => {
   const [maintenances, setMaintenances] = useState<DbMaintenance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const { period, setPeriod, dateRange, getPeriodLabel } = usePeriodFilter('month');
-  const trends = useTrends(forklifts, rentals, period);
+  const { period, setPeriod, customRange, setCustomRange, dateRange, getPeriodLabel } = usePeriodFilter('month');
+  const trends = useTrends(forklifts, rentals, period, customRange);
 
   useEffect(() => {
     if (user) {
@@ -136,7 +136,12 @@ const Index = () => {
           <p className="text-sm text-muted-foreground">
             Período: <span className="font-medium text-foreground">{dateRange.label}</span>
           </p>
-          <PeriodSelector value={period} onChange={setPeriod} />
+          <PeriodSelector 
+            value={period} 
+            onChange={setPeriod} 
+            customRange={customRange}
+            onCustomRangeChange={setCustomRange}
+          />
         </div>
 
         {/* Stats Grid */}

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { Tables } from '@/integrations/supabase/types';
-import type { PeriodType } from '@/components/common/PeriodSelector';
+import type { PeriodType, CustomDateRange } from '@/components/common/PeriodSelector';
 
 type DbForklift = Tables<'forklifts'>;
 type DbRental = Tables<'rentals'>;
@@ -22,7 +22,7 @@ interface TrendsResult {
   previousRentalsCount: number;
 }
 
-const getPeriodRange = (period: PeriodType): PeriodRange => {
+const getPeriodRange = (period: PeriodType, customRange?: CustomDateRange): PeriodRange => {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
@@ -53,6 +53,26 @@ const getPeriodRange = (period: PeriodType): PeriodRange => {
         previousEnd: new Date(currentYear - 1, 11, 31),
       };
 
+    case 'custom':
+      if (customRange?.from && customRange?.to) {
+        const start = customRange.from;
+        const end = customRange.to;
+        const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        return {
+          start,
+          end,
+          previousStart: new Date(start.getTime() - (days + 1) * 24 * 60 * 60 * 1000),
+          previousEnd: new Date(start.getTime() - 24 * 60 * 60 * 1000),
+        };
+      }
+      // Fallback to month if custom range not set
+      return {
+        start: new Date(currentYear, currentMonth, 1),
+        end: new Date(currentYear, currentMonth + 1, 0),
+        previousStart: new Date(currentYear, currentMonth - 1, 1),
+        previousEnd: new Date(currentYear, currentMonth, 0),
+      };
+
     default:
       return {
         start: new Date(currentYear, currentMonth, 1),
@@ -66,10 +86,11 @@ const getPeriodRange = (period: PeriodType): PeriodRange => {
 export const useTrends = (
   forklifts: DbForklift[],
   rentals: DbRental[],
-  period: PeriodType = 'month'
+  period: PeriodType = 'month',
+  customRange?: CustomDateRange
 ): TrendsResult => {
   return useMemo(() => {
-    const range = getPeriodRange(period);
+    const range = getPeriodRange(period, customRange);
 
     // Filter rentals by period (rental is in period if it overlaps)
     const isInRange = (rental: DbRental, start: Date, end: Date) => {
@@ -130,5 +151,5 @@ export const useTrends = (
       currentRentalsCount: currentPeriodRentals.length,
       previousRentalsCount: previousPeriodRentals.length,
     };
-  }, [forklifts, rentals, period]);
+  }, [forklifts, rentals, period, customRange]);
 };
